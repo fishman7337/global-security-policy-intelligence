@@ -4,6 +4,9 @@ This repository turns the existing GTD notebooks into a full-stack AI systems ca
 Spark-style data engineering, PostGIS analytics, graph analytics, machine learning,
 deep learning, RAG, MCP, W&B tracking, CI/CD, Docker, and algorithmic complexity work.
 
+Code and project-authored documentation are licensed under Apache-2.0. External
+datasets retain their own licenses, access rules, and citation requirements.
+
 The project is designed for historical, aggregate analysis only. It must not be used for
 tactical, targeting, weaponization, or operational guidance.
 
@@ -93,6 +96,13 @@ python -m gtd_capstone.ml.train --sample-rows 50000
 
 ## Documentation
 
+- [Contributing](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security Policy](SECURITY.md)
+- [Support](SUPPORT.md)
+- [Governance](GOVERNANCE.md)
+- [Changelog](CHANGELOG.md)
+- [Notice](NOTICE.md)
 - [Architecture](docs/architecture.md)
 - [Curriculum Map](docs/curriculum_map.md)
 - [Ethics Policy](docs/ethics.md)
@@ -103,3 +113,9 @@ python -m gtd_capstone.ml.train --sample-rows 50000
 - [Severity Model Card](docs/model_cards/severity_model.md)
 - [Extreme Mode Blueprint](docs/extreme_blueprint.md)
 - [Extreme Local Runbook](docs/runbooks/extreme_local_runbook.md)
+
+## License
+
+This project is released under the [Apache License 2.0](LICENSE). The license
+applies to repository code and project-authored documentation, not to external
+datasets consumed by the pipeline.

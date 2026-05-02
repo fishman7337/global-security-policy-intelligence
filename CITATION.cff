@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this project, please cite the repository and the underlying data providers."
+title: "Global Security Policy Intelligence"
+authors:
+  - name: "fishman7337"
+version: "0.1.0"
+date-released: "2026-05-03"
+license: "Apache-2.0"
+repository-code: "https://github.com/fishman7337/global-security-policy-intelligence"
+abstract: "A research-oriented platform for aggregate terrorism analytics, governance-capacity public-policy panels, machine learning, graph analytics, RAG, and MLOps."
