@@ -46,13 +46,17 @@ docker compose up --build
 - Public policy research layer with country-year panel, governance-capacity models, and source registry.
 - Tests for data cleaning, DSA algorithms, API contracts, RAG safety, and W&B offline logging.
 
-## Existing Files
+## Legacy References
 
-The original notebooks and Plotly HTML export are kept as reference work:
+The original exploratory notebooks are kept as historical reference work under
+`notebooks/legacy/`:
 
-- `Database.ipynb`
-- `GTD Analysis.ipynb`
-- `GTD Time Series.ipynb`
+- `notebooks/legacy/Database.ipynb`
+- `notebooks/legacy/GTD Analysis.ipynb`
+- `notebooks/legacy/GTD Time Series.ipynb`
+
+The original Plotly HTML export remains available as:
+
 - `global_terror_attacks.html`
 
 Rendered research notebook suite:
