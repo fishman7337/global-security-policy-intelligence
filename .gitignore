@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+Dataset/
+.ipynb_checkpoints/
+artifacts/
+data_lake/
+models/
+wandb/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+*.log

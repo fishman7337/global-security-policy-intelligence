@@ -1,0 +1,26 @@
+program: src/gtd_capstone/ml/experiment_suite.py
+method: bayes
+metric:
+  name: macro_f1
+  goal: maximize
+parameters:
+  model_family:
+    values: [logistic_regression, random_forest, extra_trees]
+  max_features:
+    values: [sqrt, log2, null]
+  n_estimators:
+    values: [100, 200, 400]
+  max_depth:
+    values: [8, 12, 18, null]
+  min_samples_leaf:
+    values: [1, 2, 5]
+command:
+  - ${env}
+  - python
+  - -m
+  - gtd_capstone.ml.experiment_suite
+  - --task
+  - severity
+  - --sample-rows
+  - "50000"
+

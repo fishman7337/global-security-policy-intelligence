@@ -1,0 +1,33 @@
+feature_sets:
+  incident_core_v1:
+    entity: eventid
+    offline_table: artifacts/gold/incidents.parquet
+    features:
+      - iyear
+      - imonth
+      - region_txt
+      - country_txt
+      - attacktype1_txt
+      - targtype1_txt
+      - weaptype1_txt
+      - suicide
+      - property
+      - ishostkid
+    labels:
+      - severity
+      - success
+      - nkill
+      - nwound
+    leakage_blocklist:
+      - casualties
+      - nkill
+      - nwound
+      - severity
+  graph_profile_v1:
+    entity: country_txt
+    offline_table: artifacts/gold/graph/neo4j_nodes.csv
+    features:
+      - degree_centrality
+      - pagerank
+      - community_id
+

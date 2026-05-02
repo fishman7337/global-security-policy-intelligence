@@ -1,0 +1,36 @@
+dataset: global_terrorism_database
+version: 0.2-extreme
+primary_key: eventid
+raw_sources:
+  - Dataset/globalterrorismdb_0522dist.xlsx
+  - Dataset/globalterrorismdb_2021Jan-June_1222dist.xlsx
+expected:
+  min_rows: 200000
+  year_min: 1970
+  year_max: 2021
+  unique_eventid: true
+  aggregate_geo_default: true
+columns:
+  eventid: {type: string, nullable: false}
+  iyear: {type: integer, nullable: false, min: 1970, max: 2021}
+  imonth: {type: integer, nullable: true, min: 0, max: 12}
+  iday: {type: integer, nullable: true, min: 0, max: 31}
+  country_txt: {type: string, nullable: false}
+  region_txt: {type: string, nullable: false}
+  latitude: {type: float, nullable: true, min: -90, max: 90}
+  longitude: {type: float, nullable: true, min: -180, max: 180}
+  nkill: {type: float, nullable: true, min: 0}
+  nwound: {type: float, nullable: true, min: 0}
+  severity: {type: categorical, values: [None, Low, Medium, High, Mass Casualty]}
+  severity_score: {type: float, nullable: false, min: 0}
+  severity_score_percentile: {type: float, nullable: false, min: 0, max: 1}
+  severity_cluster: {type: integer, nullable: false}
+  severity_method: {type: string, nullable: false}
+safety:
+  exact_point_maps_default: false
+  min_hotspot_events: 5
+  disallowed_outputs:
+    - tactical guidance
+    - target recommendation
+    - weaponization
+    - evasion guidance
