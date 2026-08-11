@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from gtd_capstone.api import main
@@ -32,3 +33,53 @@ def test_chat_refuses_unsafe_prompt():
 
     assert response["safe"] is False
     assert "cannot provide" in response["answer"]
+
+
+def test_api_rejects_invalid_prediction_and_empty_chat_inputs():
+    client = TestClient(main.app)
+
+    assert client.post("/api/predict/severity", json={"nkill": -1}).status_code == 422
+    assert client.post("/api/predict/severity", json={"imonth": 13}).status_code == 422
+    assert client.post("/api/chat", json={"question": ""}).status_code == 422
+    assert client.post("/api/chat", json={"question": " \t\n "}).status_code == 422
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/analytics/distributions?limit=0",
+        "/api/geo/hotspots?limit=-1",
+        "/api/geo/hotspots?min_events=0",
+        "/api/clusters?limit=0",
+        "/api/forecasts?horizon=-1",
+        "/api/forecasts?horizon=invalid",
+        "/api/graph/centrality?algorithm=betweenness",
+        "/api/geo/hotspots?level=region",
+        "/api/analytics/trends?grain=quarter",
+        "/api/analytics/trends?group_by=eventid",
+        "/api/analytics/distributions?limit=101",
+        "/api/geo/hotspots?limit=101",
+        "/api/geo/hotspots?min_events=10001",
+        "/api/clusters?limit=101",
+        "/api/forecasts?horizon=61",
+    ],
+)
+def test_api_rejects_invalid_analytics_query_parameters(path: str):
+    client = TestClient(main.app)
+
+    assert client.get(path).status_code == 422
+
+
+def test_public_cors_does_not_advertise_credential_support():
+    client = TestClient(main.app)
+
+    response = client.options(
+        "/health",
+        headers={
+            "Origin": "https://example.test",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.headers["access-control-allow-origin"] == "*"
+    assert "access-control-allow-credentials" not in response.headers

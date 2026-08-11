@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from gtd_capstone import analytics
 from gtd_capstone.contracts import validate_data_contract
@@ -21,28 +21,45 @@ from gtd_capstone.rag.evaluate import evaluate_rag
 from gtd_capstone.rag.retriever import LocalRetriever
 from gtd_capstone.safety import aggregate_only_note
 
+TrendGrain = Literal["year", "month"]
+TrendGroupBy = Literal[
+    "region_txt",
+    "country_txt",
+    "attacktype1_txt",
+    "targtype1_txt",
+    "weaptype1_txt",
+    "severity",
+]
+
+MAX_RESULT_LIMIT = 100
+MAX_HOTSPOT_MIN_EVENTS = 10_000
+MAX_FORECAST_HORIZON = 60
+
 
 class PredictionRequest(BaseModel):
     """Validated incident attributes accepted by the severity endpoint."""
 
-    iyear: int = Field(default=2021)
-    imonth: int = Field(default=1)
-    region_txt: str = Field(default="South Asia")
-    country_txt: str = Field(default="Afghanistan")
-    attacktype1_txt: str = Field(default="Armed Assault")
-    targtype1_txt: str = Field(default="Military")
-    weaptype1_txt: str = Field(default="Firearms")
-    suicide: int = Field(default=0)
-    property: int = Field(default=0)
-    ishostkid: int = Field(default=0)
-    nkill: float = Field(default=0)
-    nwound: float = Field(default=0)
+    iyear: int = Field(default=2021, ge=1970, le=2100)
+    imonth: int = Field(default=1, ge=1, le=12)
+    region_txt: str = Field(default="South Asia", min_length=1, max_length=100)
+    country_txt: str = Field(default="Afghanistan", min_length=1, max_length=100)
+    attacktype1_txt: str = Field(default="Armed Assault", min_length=1, max_length=100)
+    targtype1_txt: str = Field(default="Military", min_length=1, max_length=100)
+    weaptype1_txt: str = Field(default="Firearms", min_length=1, max_length=100)
+    suicide: int = Field(default=0, ge=0, le=1)
+    property: int = Field(default=0, ge=0, le=1)
+    ishostkid: int = Field(default=0, ge=0, le=1)
+    nkill: float = Field(default=0, ge=0)
+    nwound: float = Field(default=0, ge=0)
 
 
 class ChatRequest(BaseModel):
     """Validated question accepted by the retrieval endpoint."""
 
-    question: str
+    question: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=2000),
+    ]
 
 
 @lru_cache(maxsize=1)
@@ -77,7 +94,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -108,25 +125,36 @@ def get_data_contract() -> dict:
 
 
 @app.get("/api/analytics/trends")
-def get_trends(grain: str = "year", group_by: str = "region_txt") -> list[dict]:
+def get_trends(
+    grain: TrendGrain = "year",
+    group_by: TrendGroupBy = "region_txt",
+) -> list[dict]:
     """Return temporal trends using the requested grain and grouping."""
     return analytics.trend_points(incidents(), grain=grain, group_by=group_by)
 
 
 @app.get("/api/analytics/distributions")
-def get_distributions(limit: int = 12) -> dict[str, list[dict]]:
+def get_distributions(
+    limit: Annotated[int, Query(ge=1, le=MAX_RESULT_LIMIT)] = 12,
+) -> dict[str, list[dict]]:
     """Return leading categorical distributions up to ``limit`` entries."""
     return analytics.distributions(incidents(), limit=limit)
 
 
 @app.get("/api/geo/hotspots")
-def get_hotspots(level: str = "country", limit: int = 50, min_events: int = 5) -> list[dict]:
+def get_hotspots(
+    level: Literal["country", "city"] = "country",
+    limit: Annotated[int, Query(ge=1, le=MAX_RESULT_LIMIT)] = 50,
+    min_events: Annotated[int, Query(ge=1, le=MAX_HOTSPOT_MIN_EVENTS)] = 5,
+) -> list[dict]:
     """Return safely aggregated hotspots at the requested geographic level."""
     return analytics.hotspots(incidents(), level=level, limit=limit, min_events=min_events)
 
 
 @app.get("/api/graph/centrality")
-def get_graph_centrality(algorithm: str = "degree") -> list[dict]:
+def get_graph_centrality(
+    algorithm: Literal["degree", "pagerank"] = "degree",
+) -> list[dict]:
     """Return graph centrality scores from degree or PageRank analysis."""
     if algorithm == "pagerank":
         return pagerank_baseline(incidents())
@@ -146,13 +174,17 @@ def get_gds_playbook() -> list[dict]:
 
 
 @app.get("/api/forecasts")
-def get_forecasts(horizon: int = 12) -> list[dict]:
+def get_forecasts(
+    horizon: Annotated[int, Query(ge=1, le=MAX_FORECAST_HORIZON)] = 12,
+) -> list[dict]:
     """Return regional monthly baseline forecasts for ``horizon`` periods."""
     return analytics.simple_forecasts(incidents(), horizon=horizon)
 
 
 @app.get("/api/clusters")
-def get_clusters(limit: int = 8) -> list[dict]:
+def get_clusters(
+    limit: Annotated[int, Query(ge=1, le=MAX_RESULT_LIMIT)] = 8,
+) -> list[dict]:
     """Return the leading descriptive incident profiles."""
     return analytics.clusters(incidents(), limit=limit)
 

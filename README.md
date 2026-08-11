@@ -14,7 +14,7 @@ tactical, targeting, weaponization, or operational guidance.
 
 | Evidence-backed measure | Current repository evidence |
 | --- | --- |
-| Validation surface | **15 automated tests** cover the API, cleaning, graph/DSA, policy, guarded RAG, MCP-style aggregation, and offline W&B integration. |
+| Validation surface | **32 automated tests** cover the API, input guardrails, cleaning, graph/DSA, policy, guarded RAG, MCP-style aggregation, and offline W&B integration. |
 | System scope | The repository implements bronze/silver/gold data stages, a FastAPI service, a React dashboard, graph analytics, monitoring, and an aggregate policy layer. |
 | Front-end boundary | The verified production build includes a **5.04 MB minified / 1.53 MB gzip** Plotly chunk, recorded as a performance limitation rather than hidden. |
 
