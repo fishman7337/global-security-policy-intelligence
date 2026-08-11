@@ -1,3 +1,5 @@
+"""FastAPI surface for aggregate GTD analytics and model services."""
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -21,6 +23,8 @@ from gtd_capstone.safety import aggregate_only_note
 
 
 class PredictionRequest(BaseModel):
+    """Validated incident attributes accepted by the severity endpoint."""
+
     iyear: int = Field(default=2021)
     imonth: int = Field(default=1)
     region_txt: str = Field(default="South Asia")
@@ -36,25 +40,31 @@ class PredictionRequest(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    """Validated question accepted by the retrieval endpoint."""
+
     question: str
 
 
 @lru_cache(maxsize=1)
 def repo() -> DataRepository:
+    """Return the process-wide incident repository."""
     return DataRepository()
 
 
 @lru_cache(maxsize=1)
 def retriever() -> LocalRetriever:
+    """Return the process-wide local document retriever."""
     return LocalRetriever()
 
 
 def incidents():
+    """Load curated incidents through the cached repository."""
     return repo().load_incidents()
 
 
 @lru_cache(maxsize=1)
 def policy_bundle() -> dict:
+    """Build and cache the policy-analysis result bundle."""
     return load_policy_bundle(incidents=incidents(), settings=repo().settings)
 
 
@@ -75,41 +85,49 @@ app.add_middleware(
 
 @app.get("/health")
 def health() -> dict:
+    """Report whether the API process is responsive."""
     return {"status": "ok", "message": "GTD capstone API is running"}
 
 
 @app.get("/api/summary")
 def get_summary() -> dict:
+    """Return aggregate incident coverage and impact measures."""
     return analytics.summary(incidents())
 
 
 @app.get("/api/data-quality")
 def get_data_quality() -> dict:
+    """Return the persisted data-quality report."""
     return repo().load_quality()
 
 
 @app.get("/api/data-contract")
 def get_data_contract() -> dict:
+    """Validate curated incidents against the declared data contract."""
     return validate_data_contract(incidents())
 
 
 @app.get("/api/analytics/trends")
 def get_trends(grain: str = "year", group_by: str = "region_txt") -> list[dict]:
+    """Return temporal trends using the requested grain and grouping."""
     return analytics.trend_points(incidents(), grain=grain, group_by=group_by)
 
 
 @app.get("/api/analytics/distributions")
 def get_distributions(limit: int = 12) -> dict[str, list[dict]]:
+    """Return leading categorical distributions up to ``limit`` entries."""
     return analytics.distributions(incidents(), limit=limit)
 
 
 @app.get("/api/geo/hotspots")
 def get_hotspots(level: str = "country", limit: int = 50, min_events: int = 5) -> list[dict]:
+    """Return safely aggregated hotspots at the requested geographic level."""
     return analytics.hotspots(incidents(), level=level, limit=limit, min_events=min_events)
 
 
 @app.get("/api/graph/centrality")
 def get_graph_centrality(algorithm: str = "degree") -> list[dict]:
+    """Return graph centrality scores from degree or PageRank analysis."""
     if algorithm == "pagerank":
         return pagerank_baseline(incidents())
     return degree_centrality(incidents())
@@ -117,73 +135,87 @@ def get_graph_centrality(algorithm: str = "degree") -> list[dict]:
 
 @app.get("/api/graph/communities")
 def get_graph_communities() -> list[dict]:
+    """Return connected components from the aggregate incident graph."""
     return connected_components(incidents())
 
 
 @app.get("/api/graph/gds-playbook")
 def get_gds_playbook() -> list[dict]:
+    """Return the Neo4j Graph Data Science query catalog."""
     return gds_query_catalog()
 
 
 @app.get("/api/forecasts")
 def get_forecasts(horizon: int = 12) -> list[dict]:
+    """Return regional monthly baseline forecasts for ``horizon`` periods."""
     return analytics.simple_forecasts(incidents(), horizon=horizon)
 
 
 @app.get("/api/clusters")
 def get_clusters(limit: int = 8) -> list[dict]:
+    """Return the leading descriptive incident profiles."""
     return analytics.clusters(incidents(), limit=limit)
 
 
 @app.get("/api/models")
 def get_models() -> list[dict]:
+    """Return the project model catalog."""
     return analytics.model_catalog()
 
 
 @app.get("/api/complexity")
 def get_complexity() -> dict[str, Any]:
+    """Return algorithm-complexity notes and a live dataframe benchmark."""
     df = incidents()
     return {"catalog": complexity_catalog(), "benchmark": benchmark_dataframe(df)}
 
 
 @app.get("/api/monitoring/drift")
 def get_drift(split_year: int = 2014) -> dict:
+    """Compare feature distributions before and after ``split_year``."""
     return drift_report(incidents(), split_year=split_year)
 
 
 @app.get("/api/policy/panel-summary")
 def get_policy_panel_summary() -> dict:
+    """Return aggregate policy-panel coverage and source metadata."""
     bundle = policy_bundle()
     return {**bundle["summary"], "sources": bundle["sources"]}
 
 
 @app.get("/api/policy/results")
 def get_policy_results() -> dict:
+    """Return policy-analysis model results."""
     return policy_bundle()["results"]
 
 
 @app.get("/api/policy/event-study")
 def get_policy_event_study() -> dict:
+    """Return event-study estimates from the policy panel."""
     return policy_bundle()["event_study"]
 
 
 @app.get("/api/policy/country/{iso3}")
 def get_policy_country(iso3: str) -> dict:
+    """Return the aggregate policy profile for an ISO alpha-3 country code."""
     return country_policy_profile(policy_bundle()["panel"], iso3)
 
 
 @app.get("/api/rag/evaluation")
 def get_rag_evaluation() -> dict:
+    """Run and return the local RAG evaluation suite."""
     return evaluate_rag()
 
 
 @app.post("/api/predict/severity")
 def predict_severity(payload: PredictionRequest) -> dict:
+    """Score a validated hypothetical incident with the transparent rule."""
     return analytics.predict_severity_rule(payload.model_dump(), reference_df=incidents())
 
 
 @app.post("/api/chat")
 def chat(payload: ChatRequest) -> dict:
+    """Answer a validated question using the safe local retriever."""
     response = retriever().answer(payload.question)
     response["policy"] = aggregate_only_note()
     return response

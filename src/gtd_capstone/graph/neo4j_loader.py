@@ -1,3 +1,5 @@
+"""Load exported incident-graph CSV files into Neo4j."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,17 +11,34 @@ def load_graph_to_neo4j(
     nodes_csv: Path = Path("artifacts/gold/graph/neo4j_nodes.csv"),
     edges_csv: Path = Path("artifacts/gold/graph/neo4j_edges.csv"),
 ) -> dict:
+    """Merge exported graph nodes and relationships into Neo4j.
+
+    Args:
+        nodes_csv: Exported node table.
+        edges_csv: Exported relationship table.
+
+    Returns:
+        Loaded node and edge counts plus the configured Neo4j URI.
+
+    Raises:
+        RuntimeError: If the optional Neo4j dependency is unavailable.
+
+    """
     try:
         from neo4j import GraphDatabase
     except Exception as exc:  # pragma: no cover - optional dependency path
         raise RuntimeError("Install optional dependency with `pip install -e .[graph]`.") from exc
 
     settings = get_settings()
-    driver = GraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
+    driver = GraphDatabase.driver(
+        settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password)
+    )
     node_count = 0
     edge_count = 0
     with driver.session() as session:
-        session.run("CREATE CONSTRAINT node_id IF NOT EXISTS FOR (n:Node) REQUIRE n.node_id IS UNIQUE")
+        session.run(
+            "CREATE CONSTRAINT node_id IF NOT EXISTS FOR (n:Node) REQUIRE n.node_id IS UNIQUE"
+        )
         with nodes_csv.open(encoding="utf-8") as handle:
             import csv
 
@@ -44,4 +63,3 @@ def load_graph_to_neo4j(
                 edge_count += 1
     driver.close()
     return {"nodes": node_count, "edges": edge_count, "uri": settings.neo4j_uri}
-

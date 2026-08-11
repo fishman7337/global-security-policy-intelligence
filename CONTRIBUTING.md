@@ -1,75 +1,75 @@
-# Contributing
+# Contributing to Global Terrorism Database AI Systems Capstone
 
-Thank you for helping improve Global Security Policy Intelligence. This
-project combines public-policy research, historical terrorism data, machine
-learning, graph analytics, RAG, and MLOps, so contributions need to be both
-technically sound and safety-aware.
+Thank you for improving this project. Contributions should be focused, reproducible, evidence-based, and safe to review. By participating, you agree to follow the repository's `CODE_OF_CONDUCT.md` and security policy.
 
-## Safety First
+## Development setup
 
-This repository is for historical, aggregate, non-operational analysis. Do not
-submit code, data, prompts, notebooks, or documentation that provide tactical
-guidance, targeting support, weaponization details, evasion advice, or
-incident-level operational recommendations.
+1. Read `README.md` for project-specific prerequisites, data boundaries, and architecture.
+2. Create a branch from the current default branch; do not develop directly on `main`.
+3. Install only the dependencies needed for the change. Never commit virtual environments, caches, secrets, generated databases, or unlicensed datasets.
 
-## Contribution Types
+Typical setup and quality commands are:
 
-- Data engineering improvements that preserve data contracts.
-- Public-policy panel methods, robustness checks, and documentation.
-- Model, monitoring, graph, and RAG improvements with tests.
-- Notebook updates that stay compact and reproducible.
-- Documentation that clarifies methods, limitations, ethics, or setup.
-- Frontend improvements that make aggregate analysis easier to inspect.
-
-## Local Setup
-
-```powershell
+```text
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -e .[dev]
-cd frontend
-npm ci
+python -m pip install -e ".[dev]"
+python -m ruff check .
+python -m ruff format --check .
+python -m pytest
+python -m compileall scripts src tests
+npm --prefix frontend ci
+npm --prefix frontend run build
+npm --prefix frontend audit --omit=dev --audit-level=moderate
 ```
 
-## Required Checks
+On Windows, activate a Python environment with `.venv\Scripts\Activate.ps1`; on POSIX shells use `source .venv/bin/activate`. The GitHub Actions workflow remains the authoritative cross-platform gate.
 
-Run these before opening a pull request:
+### Repository-specific CI-equivalent checks
 
-```powershell
-python -m ruff check src tests scripts/build_notebooks.py
-pytest
-cd frontend
-npm run build
+Before opening a pull request, run the applicable heavier validation below. Commands that require Docker, Windows packaging, LaTeX, credentials, external data, or optional services are expected to report their documented prerequisite rather than be silently skipped.
+
+```text
+python -m bandit -q -r src scripts
+python -m pip_audit -r requirements.txt --progress-spinner off
 ```
 
-When notebooks change, also run:
+## Development workflow
 
-```powershell
-python scripts/build_notebooks.py --execute
-```
+1. Link the change to a clear issue or problem statement.
+2. Keep commits and pull requests small enough to review independently.
+3. Add or update tests before changing behaviour, including failure and boundary cases.
+4. Update generated artifacts through their source script; do not hand-edit generated outputs.
+5. Re-run the full local quality gate and inspect `git diff --check` before requesting review.
 
-## Pull Request Guidelines
+Use descriptive branch names such as `fix/model-validation`, `docs/evidence-table`, or `feat/batch-import`. Prefer imperative, scoped commit messages such as `fix: reject malformed labels`.
 
-- Keep pull requests scoped to one coherent change.
-- Describe why the change matters and what evidence supports it.
-- Mention affected datasets, artifacts, API routes, notebooks, and docs.
-- Include tests for behavior changes.
-- Avoid committing raw datasets, generated artifacts, local caches, secrets,
-  model binaries, or build output.
-- Update documentation when behavior, assumptions, or limitations change.
+## Quality checks
 
-## Code Style
+All applicable lint, formatting, test, build, notebook, security, and dependency checks must pass. Python production APIs follow PEP 8 and PEP 257 with Google-style docstrings; tests may rely on descriptive test names where the Ruff configuration explicitly allows it.
 
-Python code should follow PEP 8 and use PEP 257 compatible Google-style
-docstrings for research-critical modules. Prefer existing package utilities
-over notebook-only duplication.
+Do not weaken a quality threshold, skip a security finding, or add a blanket exclusion merely to make CI green. Any narrowly necessary suppression must identify the rule or advisory, explain the risk decision, and include an owner or review condition.
 
-Frontend code should keep the dashboard focused on aggregate research,
-diagnostics, and limitations rather than tactical incident use.
+## Documentation and evidence
 
-## Data and Licensing
+- Update `README.md`, architecture/model/data documentation, and examples when behaviour or interfaces change.
+- Preserve the denominator, dataset version, split, model/run, date range, and calculation method for every numerical claim.
+- Distinguish implemented capability from measured outcome. Tests, CI, and deployment scaffolding do not prove that a system is secure, production-deployed, real-time, accurate, or impactful.
+- Keep notebooks reproducible: run cells in order, remove stored exception outputs, record seeds/configuration, and avoid committing local absolute paths.
+- Document data provenance and licensing. Do not add personal, confidential, credentialed, or copyrighted data without explicit authorization.
 
-The code is licensed under Apache-2.0. Data sources such as GTD, WGI, WDI,
-V-Dem, UCDP, UNDP HDI, Freedom House, and International IDEA retain their own
-licenses, attribution rules, and access terms. Do not redistribute raw data
-unless the provider terms explicitly allow it.
+## Pull requests
+
+A pull request should include:
+
+- a concise problem statement and solution summary;
+- the exact commands run and their results;
+- screenshots or artifacts for visible behaviour changes;
+- data/model migration and rollback notes where relevant;
+- updated documentation and an evidence source for new claims; and
+- confirmation that no secret, personal data, or unrelated generated file is included.
+
+Reviewers should be able to reproduce the result from a clean checkout. Resolve all review threads and keep the branch current before merge.
+
+## Security and conduct
+
+Report vulnerabilities through the private process in `SECURITY.md`; do not open a public exploit issue. Follow `CODE_OF_CONDUCT.md` in all project spaces. Academic or portfolio contributions must preserve attribution and must not misrepresent collaborators, results, or institutional endorsement.

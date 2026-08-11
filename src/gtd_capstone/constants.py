@@ -1,3 +1,5 @@
+"""Column groups and labels shared by GTD ingestion and analytics."""
+
 from __future__ import annotations
 
 CORE_COLUMNS = [
@@ -64,4 +66,3 @@ UNSAFE_CHAT_TERMS = [
     "plan an attack",
     "terrorist tactics",
 ]
-

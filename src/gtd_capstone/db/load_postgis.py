@@ -1,3 +1,5 @@
+"""Load curated GTD incidents into the configured PostGIS warehouse."""
+
 from __future__ import annotations
 
 import argparse
@@ -8,7 +10,6 @@ from sqlalchemy import create_engine, text
 
 from gtd_capstone.config import get_settings
 from gtd_capstone.data.repository import DataRepository
-
 
 WAREHOUSE_COLUMNS = [
     "eventid",
@@ -38,7 +39,19 @@ WAREHOUSE_COLUMNS = [
 ]
 
 
-def load_postgis(database_url: str | None = None, schema_path: Path = Path("db/schema.sql")) -> dict:
+def load_postgis(
+    database_url: str | None = None, schema_path: Path = Path("db/schema.sql")
+) -> dict:
+    """Replace the PostGIS incident table with curated records.
+
+    Args:
+        database_url: SQLAlchemy connection URL, or ``None`` to use settings.
+        schema_path: SQL schema applied before loading records.
+
+    Returns:
+        Destination table, row count, and connection URL metadata.
+
+    """
     settings = get_settings()
     database_url = database_url or settings.database_url
     engine = create_engine(database_url)
@@ -49,7 +62,9 @@ def load_postgis(database_url: str | None = None, schema_path: Path = Path("db/s
     with engine.begin() as conn:
         conn.execute(text(schema_path.read_text(encoding="utf-8")))
         conn.execute(text("TRUNCATE TABLE incidents;"))
-        frame.to_sql("incidents", conn, if_exists="append", index=False, method="multi", chunksize=2000)
+        frame.to_sql(
+            "incidents", conn, if_exists="append", index=False, method="multi", chunksize=2000
+        )
         conn.execute(
             text(
                 """
@@ -63,6 +78,7 @@ def load_postgis(database_url: str | None = None, schema_path: Path = Path("db/s
 
 
 def main() -> None:
+    """Parse command-line options and load the PostGIS warehouse."""
     parser = argparse.ArgumentParser(description="Load curated GTD incidents into PostGIS.")
     parser.add_argument("--database-url", default=None)
     args = parser.parse_args()
@@ -71,4 +87,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -1,7 +1,9 @@
+"""In-memory graph projections and transparent centrality baselines."""
+
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from typing import Hashable
+from collections.abc import Hashable
 
 import pandas as pd
 
@@ -9,6 +11,15 @@ from gtd_capstone.dsa.algorithms import UnionFind, build_adjacency
 
 
 def graph_edges_from_incidents(df: pd.DataFrame) -> list[tuple[str, str, str]]:
+    """Project incident records into typed knowledge-graph edges.
+
+    Args:
+        df: Curated incident dataframe.
+
+    Returns:
+        Source, target, and relationship triples.
+
+    """
     edges: list[tuple[str, str, str]] = []
     for row in df.itertuples(index=False):
         incident = f"Incident:{row.eventid}"
@@ -34,6 +45,16 @@ def graph_edges_from_incidents(df: pd.DataFrame) -> list[tuple[str, str, str]]:
 
 
 def degree_centrality(df: pd.DataFrame, limit: int = 25) -> list[dict]:
+    """Rank projected graph nodes by undirected degree.
+
+    Args:
+        df: Curated incident dataframe.
+        limit: Maximum number of ranked nodes to return.
+
+    Returns:
+        Node labels and degree scores in descending order.
+
+    """
     degree = Counter()
     relation_counts = Counter()
     for left, right, relation in graph_edges_from_incidents(df):
@@ -47,6 +68,17 @@ def degree_centrality(df: pd.DataFrame, limit: int = 25) -> list[dict]:
 
 
 def pagerank_baseline(df: pd.DataFrame, iterations: int = 10, damping: float = 0.85) -> list[dict]:
+    """Estimate PageRank scores on the in-memory incident graph.
+
+    Args:
+        df: Curated incident dataframe.
+        iterations: Number of power-iteration updates.
+        damping: Probability of following a graph edge.
+
+    Returns:
+        The 25 highest-ranked graph nodes.
+
+    """
     plain_edges = [(left, right) for left, right, _ in graph_edges_from_incidents(df)]
     adjacency = build_adjacency(plain_edges)
     nodes = list(adjacency)
@@ -69,6 +101,16 @@ def pagerank_baseline(df: pd.DataFrame, iterations: int = 10, damping: float = 0
 
 
 def connected_components(df: pd.DataFrame, limit: int = 20) -> list[dict]:
+    """Find the largest connected components with union-find.
+
+    Args:
+        df: Curated incident dataframe.
+        limit: Maximum number of components to return.
+
+    Returns:
+        Component sizes and representative node samples.
+
+    """
     edges = [(left, right) for left, right, _ in graph_edges_from_incidents(df)]
     nodes: set[Hashable] = set()
     for left, right in edges:
@@ -93,6 +135,7 @@ def connected_components(df: pd.DataFrame, limit: int = 20) -> list[dict]:
 
 
 def neo4j_cypher_schema() -> list[str]:
+    """Return idempotent Neo4j constraints and indexes for the graph."""
     return [
         "CREATE CONSTRAINT incident_id IF NOT EXISTS FOR (n:Incident) REQUIRE n.eventid IS UNIQUE;",
         "CREATE INDEX country_name IF NOT EXISTS FOR (n:Country) ON (n.name);",
@@ -101,4 +144,3 @@ def neo4j_cypher_schema() -> list[str]:
         "CREATE INDEX target_type_name IF NOT EXISTS FOR (n:TargetType) ON (n.name);",
         "CREATE INDEX weapon_type_name IF NOT EXISTS FOR (n:WeaponType) ON (n.name);",
     ]
-

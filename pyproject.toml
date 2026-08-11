@@ -33,7 +33,16 @@ graph = ["neo4j>=5.19"]
 vector = ["qdrant-client>=1.9", "sentence-transformers>=2.7"]
 explain = ["shap>=0.45"]
 deep = ["tensorflow>=2.16", "torch>=2.2"]
-dev = ["pytest>=8.0", "ruff>=0.5", "mypy>=1.10", "nbformat>=5.10", "nbclient>=0.10", "ipykernel>=6.29"]
+dev = [
+  "bandit[toml]>=1.7.9",
+  "ipykernel>=6.29",
+  "mypy>=1.10",
+  "nbclient>=0.10",
+  "nbformat>=5.10",
+  "pip-audit>=2.7",
+  "pytest>=8.0",
+  "ruff>=0.5"
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -43,5 +52,20 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.ruff]
+extend-exclude = ["notebooks"]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
+select = ["B", "D", "E", "F", "I", "SIM", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "notebooks"]
+skips = ["B101"]

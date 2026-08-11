@@ -10,6 +10,16 @@ datasets retain their own licenses, access rules, and citation requirements.
 The project is designed for historical, aggregate analysis only. It must not be used for
 tactical, targeting, weaponization, or operational guidance.
 
+## Evidence and interpretation
+
+| Evidence-backed measure | Current repository evidence |
+| --- | --- |
+| Validation surface | **15 automated tests** cover the API, cleaning, graph/DSA, policy, guarded RAG, MCP-style aggregation, and offline W&B integration. |
+| System scope | The repository implements bronze/silver/gold data stages, a FastAPI service, a React dashboard, graph analytics, monitoring, and an aggregate policy layer. |
+| Front-end boundary | The verified production build includes a **5.04 MB minified / 1.53 MB gzip** Plotly chunk, recorded as a performance limitation rather than hidden. |
+
+The qualitative outcome is a reproducible research platform for aggregate policy intelligence. It does not establish causal policy impact, production adoption, latency, or a population-level accuracy claim.
+
 ## Quick Start
 
 ```powershell
@@ -117,6 +127,17 @@ python -m gtd_capstone.ml.train --sample-rows 50000
 - [Severity Model Card](docs/model_cards/severity_model.md)
 - [Extreme Mode Blueprint](docs/extreme_blueprint.md)
 - [Extreme Local Runbook](docs/runbooks/extreme_local_runbook.md)
+
+## Known Limitations
+
+- The production dashboard currently bundles Plotly into the initial Vite asset. A clean
+  11 August 2026 build produced a 5.04 MB minified JavaScript chunk (1.53 MB gzip). The build
+  is valid, but route-level lazy loading or a dedicated visualization chunk would improve
+  first-load performance.
+- TensorFlow, PySpark, Neo4j, and vector-database integrations are optional extensions and are
+  not exercised by the default CPU-only CI job.
+- The source GTD dataset is not redistributed; complete artifact builds require a separately
+  obtained, appropriately licensed local copy.
 
 ## License
 

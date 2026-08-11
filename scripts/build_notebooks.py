@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import argparse
 import textwrap
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import nbformat
 from nbclient import NotebookClient
 from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
-
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = ROOT / "notebooks"
@@ -67,6 +66,7 @@ def notebook(title: str, summary: str, cells: list) -> nbformat.NotebookNode:
 
     Returns:
         Notebook node ready to write or execute.
+
     """
     return new_notebook(
         cells=[md(f"# {title}\n\n{summary}"), SETUP, *cells],
@@ -412,7 +412,7 @@ def notebook_specs() -> list[tuple[str, nbformat.NotebookNode]]:
                                 "layers": [layer.__class__.__name__ for layer in model.layers],
                                 "output_shape": str(model.output_shape),
                             }
-                        except RuntimeError as exc:
+                        except (AttributeError, ImportError, RuntimeError) as exc:
                             result = {"tensorflow_available": False, "reason": str(exc)}
                         result
                         """
@@ -610,6 +610,7 @@ def write_notebooks(specs: Iterable[tuple[str, nbformat.NotebookNode]]) -> list[
 
     Returns:
         Written notebook paths.
+
     """
     NOTEBOOK_DIR.mkdir(parents=True, exist_ok=True)
     written = []
@@ -626,6 +627,7 @@ def execute_notebooks(paths: Iterable[Path], timeout: int = DEFAULT_TIMEOUT_SECO
     Args:
         paths: Notebook paths to execute.
         timeout: Per-cell timeout in seconds.
+
     """
     for path in paths:
         print(f"Executing {path.relative_to(ROOT)}")
@@ -643,7 +645,9 @@ def execute_notebooks(paths: Iterable[Path], timeout: int = DEFAULT_TIMEOUT_SECO
 def main() -> None:
     """Generate and optionally execute the notebook suite."""
     parser = argparse.ArgumentParser(description="Build the rendered GTD notebook suite.")
-    parser.add_argument("--execute", action="store_true", help="Execute notebooks after generation.")
+    parser.add_argument(
+        "--execute", action="store_true", help="Execute notebooks after generation."
+    )
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     args = parser.parse_args()
 

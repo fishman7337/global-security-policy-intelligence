@@ -1,3 +1,5 @@
+"""Feature-store specification loading and dataframe materialization."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,6 +11,7 @@ from gtd_capstone.contracts import _load_yaml_like
 
 
 def load_feature_spec(path: Path = Path("configs/feature_store.yaml")) -> dict[str, Any]:
+    """Load the versioned feature-store specification from disk."""
     return _load_yaml_like(path)
 
 
@@ -17,6 +20,17 @@ def materialize_feature_set(
     feature_set: str = "incident_core_v1",
     spec_path: Path = Path("configs/feature_store.yaml"),
 ) -> pd.DataFrame:
+    """Select a declared feature set and attach leakage metadata.
+
+    Args:
+        df: Curated incident dataframe.
+        feature_set: Named feature-set definition to materialize.
+        spec_path: Feature-store specification path.
+
+    Returns:
+        A copied dataframe containing available entity, feature, and label columns.
+
+    """
     spec = load_feature_spec(spec_path)
     definition = spec["feature_sets"][feature_set]
     entity = definition["entity"]
@@ -27,4 +41,3 @@ def materialize_feature_set(
     frame.attrs["leakage_blocklist"] = sorted(leakage)
     frame.attrs["feature_set"] = feature_set
     return frame
-

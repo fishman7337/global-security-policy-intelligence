@@ -1,3 +1,5 @@
+"""Export graph nodes, edges, and schema for Neo4j ingestion."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,6 +10,16 @@ from gtd_capstone.graph.analytics import graph_edges_from_incidents, neo4j_cyphe
 
 
 def export_graph_csv(df: pd.DataFrame, output_dir: Path) -> dict[str, Path]:
+    """Export an incident graph as normalized CSV files and Cypher schema.
+
+    Args:
+        df: Curated incident dataframe.
+        output_dir: Directory that receives graph artifacts.
+
+    Returns:
+        Artifact names mapped to their output paths.
+
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     edges = graph_edges_from_incidents(df)
     edge_frame = pd.DataFrame(edges, columns=["source", "target", "relationship"])
@@ -16,7 +28,9 @@ def export_graph_csv(df: pd.DataFrame, output_dir: Path) -> dict[str, Path]:
         {
             "node_id": nodes,
             "label": [str(node).split(":", 1)[0] for node in nodes],
-            "name": [str(node).split(":", 1)[1] if ":" in str(node) else str(node) for node in nodes],
+            "name": [
+                str(node).split(":", 1)[1] if ":" in str(node) else str(node) for node in nodes
+            ],
         }
     )
     node_path = output_dir / "neo4j_nodes.csv"
@@ -26,4 +40,3 @@ def export_graph_csv(df: pd.DataFrame, output_dir: Path) -> dict[str, Path]:
     edge_frame.to_csv(edge_path, index=False)
     cypher_path.write_text("\n".join(neo4j_cypher_schema()) + "\n", encoding="utf-8")
     return {"nodes": node_path, "edges": edge_path, "schema": cypher_path}
-

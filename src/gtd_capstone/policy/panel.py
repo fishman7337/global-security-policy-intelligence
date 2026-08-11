@@ -20,7 +20,6 @@ from gtd_capstone.policy.sources import (
 )
 from gtd_capstone.safety import aggregate_only_note
 
-
 MAIN_GOVERNANCE_COLUMNS = ["government_effectiveness", "rule_of_law", "control_of_corruption"]
 ROBUSTNESS_COLUMNS = [
     "political_stability",
@@ -207,6 +206,7 @@ def build_policy_panel(
     Returns:
         Balanced country-year panel with outcomes, covariates, lags, and
         completeness flags.
+
     """
     outcomes = aggregate_gtd_country_year(incidents, start_year=start_year, end_year=end_year)
     external = external_sources.copy() if external_sources is not None else pd.DataFrame()
@@ -235,6 +235,7 @@ def aggregate_gtd_country_year(
 
     Returns:
         Balanced country-year dataframe with terrorism outcome measures.
+
     """
     df = incidents.copy()
     df = df[df["iyear"].between(start_year, end_year)].copy()
@@ -258,12 +259,13 @@ def aggregate_gtd_country_year(
         .reset_index()
         .rename(columns={"iyear": "year"})
     )
-    country_meta = (
-        grouped.sort_values(["country_key", "attacks"], ascending=[True, False])
-        .drop_duplicates("country_key")[["country_key", "country_txt", "region_txt", "iso3"]]
-    )
+    country_meta = grouped.sort_values(
+        ["country_key", "attacks"], ascending=[True, False]
+    ).drop_duplicates("country_key")[["country_key", "country_txt", "region_txt", "iso3"]]
     years = pd.DataFrame({"year": list(range(start_year, end_year + 1))})
-    balanced = country_meta.assign(_join=1).merge(years.assign(_join=1), on="_join").drop(columns="_join")
+    balanced = (
+        country_meta.assign(_join=1).merge(years.assign(_join=1), on="_join").drop(columns="_join")
+    )
     panel = balanced.merge(
         grouped.drop(columns=["country_txt", "region_txt", "iso3"]),
         on=["country_key", "year"],
@@ -302,6 +304,7 @@ def add_policy_features(panel: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Panel with governance capacity, transformed controls, one-year lags,
         reporting-bias proxy, and complete-case flag.
+
     """
     if panel.empty:
         return panel
@@ -311,7 +314,9 @@ def add_policy_features(panel: pd.DataFrame) -> pd.DataFrame:
             data[column] = np.nan
 
     data["governance_capacity"] = data[MAIN_GOVERNANCE_COLUMNS].mean(axis=1, skipna=True)
-    data["governance_capacity_components_available"] = data[MAIN_GOVERNANCE_COLUMNS].notna().sum(axis=1)
+    data["governance_capacity_components_available"] = (
+        data[MAIN_GOVERNANCE_COLUMNS].notna().sum(axis=1)
+    )
     data["development_controls_available"] = data[CONTROL_COLUMNS].notna().sum(axis=1)
     data["robustness_sources_available"] = data[ROBUSTNESS_COLUMNS].notna().sum(axis=1)
     data["log_population"] = np.log(data["population"].where(data["population"].gt(0)))
@@ -337,9 +342,11 @@ def add_policy_features(panel: pd.DataFrame) -> pd.DataFrame:
     data["reporting_bias_proxy"] = data[["internet_users_pct", "press_freedom_score"]].mean(
         axis=1, skipna=True
     )
-    data["policy_panel_complete_case"] = data[
-        ["governance_capacity_lag1", "log_population_lag1", "log_gdp_per_capita_lag1"]
-    ].notna().all(axis=1)
+    data["policy_panel_complete_case"] = (
+        data[["governance_capacity_lag1", "log_population_lag1", "log_gdp_per_capita_lag1"]]
+        .notna()
+        .all(axis=1)
+    )
     return data
 
 
@@ -362,6 +369,7 @@ def build_policy_bundle(
     Returns:
         Dictionary containing panel dataframe, summaries, model results,
         event-study output, source registry, and source reports.
+
     """
     settings = settings or get_settings()
     source_frames: list[pd.DataFrame] = []
@@ -373,7 +381,9 @@ def build_policy_bundle(
     source_reports.extend(local_report)
 
     if fetch_sources:
-        world_bank, world_bank_report = fetch_world_bank_panel(start_year=start_year, end_year=end_year)
+        world_bank, world_bank_report = fetch_world_bank_panel(
+            start_year=start_year, end_year=end_year
+        )
         if not world_bank.empty:
             source_frames.append(world_bank)
         source_reports.extend(world_bank_report)
@@ -385,7 +395,9 @@ def build_policy_bundle(
         start_year=start_year,
         end_year=end_year,
     )
-    summary = policy_panel_summary(panel, source_reports=source_reports, fetch_sources=fetch_sources)
+    summary = policy_panel_summary(
+        panel, source_reports=source_reports, fetch_sources=fetch_sources
+    )
     results = run_policy_models(panel)
     event_study = build_event_study(panel)
     return {
@@ -407,6 +419,7 @@ def write_policy_artifacts(bundle: dict[str, Any], policy_dir: Path) -> dict[str
 
     Returns:
         Mapping of artifact names to written file paths.
+
     """
     policy_dir.mkdir(parents=True, exist_ok=True)
     panel_path = policy_dir / "country_year_panel.parquet"
@@ -417,7 +430,9 @@ def write_policy_artifacts(bundle: dict[str, Any], policy_dir: Path) -> dict[str
     bundle["panel"].to_parquet(panel_path, index=False)
     summary_path.write_text(json.dumps(bundle["summary"], indent=2, default=str), encoding="utf-8")
     results_path.write_text(json.dumps(bundle["results"], indent=2, default=str), encoding="utf-8")
-    event_study_path.write_text(json.dumps(bundle["event_study"], indent=2, default=str), encoding="utf-8")
+    event_study_path.write_text(
+        json.dumps(bundle["event_study"], indent=2, default=str), encoding="utf-8"
+    )
     sources_path.write_text(json.dumps(bundle["sources"], indent=2, default=str), encoding="utf-8")
     return {
         "panel": str(panel_path),
@@ -442,6 +457,7 @@ def load_policy_bundle(
 
     Returns:
         Policy bundle with panel, results, summaries, and source metadata.
+
     """
     settings = settings or get_settings()
     policy_dir = settings.gold_dir / "policy"
@@ -450,7 +466,10 @@ def load_policy_bundle(
     results_path = policy_dir / "results.json"
     event_study_path = policy_dir / "event_study.json"
     sources_path = policy_dir / "source_registry.json"
-    if all(path.exists() for path in [panel_path, summary_path, results_path, event_study_path, sources_path]):
+    if all(
+        path.exists()
+        for path in [panel_path, summary_path, results_path, event_study_path, sources_path]
+    ):
         panel = pd.read_parquet(panel_path)
         return {
             "panel": panel,
@@ -481,6 +500,7 @@ def policy_panel_summary(
 
     Returns:
         JSON-serializable panel summary.
+
     """
     if panel.empty:
         return {"rows": 0, "countries": 0, "years": [], "aggregate_policy": aggregate_only_note()}
@@ -521,6 +541,7 @@ def country_policy_profile(panel: pd.DataFrame, iso3: str) -> dict[str, Any]:
 
     Returns:
         Country metadata and year-by-year policy records.
+
     """
     code = iso3.upper()
     rows = panel[panel["iso3"].eq(code)].sort_values("year")
@@ -548,7 +569,9 @@ def country_policy_profile(panel: pd.DataFrame, iso3: str) -> dict[str, Any]:
                 "rule_of_law",
                 "control_of_corruption",
             ]
-        ].replace({np.nan: None}).to_dict(orient="records"),
+        ]
+        .replace({np.nan: None})
+        .to_dict(orient="records"),
     }
 
 

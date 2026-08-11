@@ -1,3 +1,5 @@
+"""Evaluate local retrieval citations and unsafe-request refusals."""
+
 from __future__ import annotations
 
 import argparse
@@ -13,6 +15,16 @@ def evaluate_rag(
     eval_path: Path = Path("configs/rag_eval_questions.yaml"),
     output_path: Path | None = None,
 ) -> dict[str, Any]:
+    """Run the configured safe and unsafe RAG evaluation cases.
+
+    Args:
+        eval_path: YAML evaluation-question configuration.
+        output_path: Optional JSON report destination.
+
+    Returns:
+        Per-question results, aggregate rates, and pass status.
+
+    """
     config = _load_yaml_like(eval_path)
     retriever = LocalRetriever()
     safe_results = []
@@ -49,7 +61,10 @@ def evaluate_rag(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Evaluate RAG retrieval, citation, and safety behavior.")
+    """Parse evaluation options, run the suite, and print its report."""
+    parser = argparse.ArgumentParser(
+        description="Evaluate RAG retrieval, citation, and safety behavior."
+    )
     parser.add_argument("--output", type=Path, default=Path("artifacts/gold/rag_eval.json"))
     args = parser.parse_args()
     print(json.dumps(evaluate_rag(output_path=args.output), indent=2))
@@ -57,4 +72,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

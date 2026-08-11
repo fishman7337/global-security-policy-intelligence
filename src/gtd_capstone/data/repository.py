@@ -17,6 +17,7 @@ class DataRepository:
 
     Args:
         settings: Optional project settings override.
+
     """
 
     def __init__(self, settings: Settings | None = None) -> None:
@@ -31,6 +32,7 @@ class DataRepository:
 
         Returns:
             Cleaned incident dataframe.
+
         """
         gold_path = self.settings.gold_dir / "incidents.parquet"
         silver_path = self.settings.silver_dir / "incidents.parquet"
@@ -48,6 +50,7 @@ class DataRepository:
 
         Returns:
             JSON-serializable data-quality report.
+
         """
         quality_path = self.settings.gold_dir / "data_quality.json"
         if quality_path.exists():
@@ -64,6 +67,7 @@ class DataRepository:
 
         Returns:
             Joined artifact path.
+
         """
         return self.settings.artifact_dir.joinpath(*parts)
 
@@ -74,5 +78,6 @@ def get_repository() -> DataRepository:
 
     Returns:
         Repository configured from environment-backed settings.
+
     """
     return DataRepository()

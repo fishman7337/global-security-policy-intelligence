@@ -17,4 +17,3 @@ def test_graph_baselines_return_profiles():
 
     assert degree_centrality(df)
     assert connected_components(df)
-

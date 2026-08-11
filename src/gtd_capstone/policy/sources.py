@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import time
-import urllib.parse
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pandas as pd
 
 
@@ -23,6 +21,7 @@ class WorldBankIndicator:
         source_id: World Bank source ID.
         label: Human-readable indicator name.
         tier: Analytical tier used in the source registry.
+
     """
 
     column: str
@@ -55,8 +54,12 @@ WORLD_BANK_INDICATORS = [
         "Political Stability and Absence of Violence/Terrorism",
         "robustness-only",
     ),
-    WorldBankIndicator("voice_accountability", "GOV_WGI_VA.EST", 3, "Voice and Accountability", "robustness"),
-    WorldBankIndicator("regulatory_quality", "GOV_WGI_RQ.EST", 3, "Regulatory Quality", "robustness"),
+    WorldBankIndicator(
+        "voice_accountability", "GOV_WGI_VA.EST", 3, "Voice and Accountability", "robustness"
+    ),
+    WorldBankIndicator(
+        "regulatory_quality", "GOV_WGI_RQ.EST", 3, "Regulatory Quality", "robustness"
+    ),
     WorldBankIndicator("population", "SP.POP.TOTL", 2, "Population, total", "development-control"),
     WorldBankIndicator(
         "gdp_per_capita",
@@ -101,6 +104,7 @@ def source_registry() -> list[dict[str, Any]]:
 
     Returns:
         List of source metadata dictionaries.
+
     """
     return [
         {
@@ -186,6 +190,7 @@ def fetch_world_bank_panel(
 
     Returns:
         Tuple of normalized indicator dataframe and fetch-status reports.
+
     """
     indicators = indicators or WORLD_BANK_INDICATORS
     frames: list[pd.DataFrame] = []
@@ -224,21 +229,20 @@ def _fetch_world_bank_indicator(
     timeout_seconds: int,
 ) -> pd.DataFrame:
     """Fetch and normalize one World Bank indicator."""
-    params = urllib.parse.urlencode(
-        {
-            "format": "json",
-            "per_page": 20000,
-            "date": f"{start_year}:{end_year}",
-            "source": indicator.source_id,
-        }
-    )
-    url = f"https://api.worldbank.org/v2/country/all/indicator/{indicator.indicator}?{params}"
+    params = {
+        "format": "json",
+        "per_page": 20000,
+        "date": f"{start_year}:{end_year}",
+        "source": indicator.source_id,
+    }
+    url = f"https://api.worldbank.org/v2/country/all/indicator/{indicator.indicator}"
     payload = None
     last_error: Exception | None = None
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(url, timeout=timeout_seconds) as response:
-                payload = json.loads(response.read().decode("utf-8-sig"))
+            response = httpx.get(url, params=params, timeout=timeout_seconds)
+            response.raise_for_status()
+            payload = response.json()
             break
         except Exception as exc:  # pragma: no cover - depends on remote API behavior.
             last_error = exc
@@ -274,7 +278,9 @@ def _fetch_world_bank_indicator(
     return frame.drop_duplicates(["iso3", "year"])
 
 
-def load_normalized_local_sources(source_dir: Path | None) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
+def load_normalized_local_sources(
+    source_dir: Path | None,
+) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     """Load normalized optional policy sources from a local directory.
 
     Args:
@@ -282,6 +288,7 @@ def load_normalized_local_sources(source_dir: Path | None) -> tuple[pd.DataFrame
 
     Returns:
         Tuple of merged source dataframe and file-status reports.
+
     """
     if source_dir is None or not source_dir.exists():
         return pd.DataFrame(), []
@@ -295,12 +302,16 @@ def load_normalized_local_sources(source_dir: Path | None) -> tuple[pd.DataFrame
             raw = _read_source_file(path)
             frame = normalize_external_source(raw)
             if frame.empty:
-                reports.append({"file": str(path), "rows": 0, "status": "ignored-missing-iso3-year"})
+                reports.append(
+                    {"file": str(path), "rows": 0, "status": "ignored-missing-iso3-year"}
+                )
                 continue
             frames.append(frame)
             reports.append({"file": str(path), "rows": int(len(frame)), "status": "loaded"})
         except Exception as exc:
-            reports.append({"file": str(path), "rows": 0, "status": "unavailable", "error": str(exc)[:240]})
+            reports.append(
+                {"file": str(path), "rows": 0, "status": "unavailable", "error": str(exc)[:240]}
+            )
     return merge_source_frames(frames), reports
 
 
@@ -313,6 +324,7 @@ def normalize_external_source(frame: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Normalized dataframe keyed by `iso3` and `year`, or an empty
         dataframe when required keys are absent.
+
     """
     if frame.empty:
         return pd.DataFrame()
@@ -362,13 +374,16 @@ def merge_source_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
 
     Returns:
         Merged country-year source dataframe.
+
     """
     frames = [frame for frame in frames if frame is not None and not frame.empty]
     if not frames:
         return pd.DataFrame()
     merged = frames[0].copy()
     for frame in frames[1:]:
-        overlap = [col for col in frame.columns if col in merged.columns and col not in {"iso3", "year"}]
+        overlap = [
+            col for col in frame.columns if col in merged.columns and col not in {"iso3", "year"}
+        ]
         if overlap:
             frame = frame.drop(columns=overlap)
         merged = merged.merge(frame, on=["iso3", "year"], how="outer")

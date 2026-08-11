@@ -1,3 +1,5 @@
+"""Validation helpers for the curated GTD dataframe contract."""
+
 from __future__ import annotations
 
 import json
@@ -13,17 +15,27 @@ def _load_yaml_like(path: Path) -> dict[str, Any]:
         import yaml
 
         return yaml.safe_load(path.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception as exc:
         text = path.read_text(encoding="utf-8")
         if path.suffix == ".json":
             return json.loads(text)
-        raise RuntimeError("Install PyYAML to parse YAML contract files.")
+        raise RuntimeError("Install PyYAML to parse YAML contract files.") from exc
 
 
 def validate_data_contract(
     df: pd.DataFrame,
     contract_path: Path = Path("configs/data_contract.yaml"),
 ) -> dict[str, Any]:
+    """Evaluate a dataframe against the versioned dataset contract.
+
+    Args:
+        df: Curated incident dataframe to validate.
+        contract_path: YAML contract containing expected columns and ranges.
+
+    Returns:
+        Contract identity, overall status, and individual check results.
+
+    """
     contract = _load_yaml_like(contract_path)
     expected = contract.get("expected", {})
     checks: list[dict[str, Any]] = []
@@ -67,4 +79,3 @@ def validate_data_contract(
         "passed": all(check["passed"] for check in checks),
         "checks": checks,
     }
-

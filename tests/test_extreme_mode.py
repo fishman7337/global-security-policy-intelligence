@@ -27,4 +27,3 @@ def test_rag_eval_and_gds_catalog():
 
     assert rag_report["passed"] is True
     assert any(query["name"] == "pagerank" for query in gds)
-

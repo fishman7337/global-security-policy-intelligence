@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -11,7 +11,6 @@ from sklearn.cluster import OPTICS
 from sklearn.preprocessing import RobustScaler
 
 from gtd_capstone.constants import CATEGORICAL_COLUMNS, CORE_COLUMNS, NUMERIC_COLUMNS
-
 
 SEVERITY_LABELS = ["None", "Low", "Medium", "High", "Mass Casualty"]
 
@@ -24,6 +23,7 @@ def discover_excel_sources(dataset_dir: Path) -> list[Path]:
 
     Returns:
         Sorted list of matching Excel paths.
+
     """
     return sorted(dataset_dir.glob("globalterrorismdb_*.xlsx"))
 
@@ -43,6 +43,7 @@ def read_excel_sources(
     Returns:
         Concatenated raw dataframe, or deterministic synthetic rows when no
         sources are available.
+
     """
     frames: list[pd.DataFrame] = []
     columns = columns or CORE_COLUMNS
@@ -66,6 +67,7 @@ def synthetic_incidents() -> pd.DataFrame:
 
     Returns:
         Three-row GTD-like dataframe.
+
     """
     return pd.DataFrame(
         [
@@ -160,6 +162,7 @@ def clean_incidents(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Cleaned dataframe with dates, casualty fields, adaptive severity,
         coordinate flags, and source metadata.
+
     """
     df = df.copy()
     for column in CORE_COLUMNS:
@@ -233,6 +236,7 @@ def assign_adaptive_severity(
         Dataframe with `severity`, `severity_score`,
         `severity_score_percentile`, `severity_cluster`, and
         `severity_method`.
+
     """
     output = df.copy()
     output["severity_score"] = _severity_score(output)
@@ -246,7 +250,9 @@ def assign_adaptive_severity(
         return output
 
     nonzero = output.loc[nonzero_mask, ["nkill", "nwound", "casualties", "severity_score"]].copy()
-    output.loc[nonzero_mask, "severity_score_percentile"] = _percentile_rank(nonzero["severity_score"])
+    output.loc[nonzero_mask, "severity_score_percentile"] = _percentile_rank(
+        nonzero["severity_score"]
+    )
     nonzero["severity_score_percentile"] = output.loc[
         nonzero_mask, "severity_score_percentile"
     ].to_numpy()
@@ -322,7 +328,9 @@ def assign_adaptive_severity(
     output.loc[nonzero_mask, "severity_cluster"] = all_labels
     output.loc[nonzero_mask, "severity"] = assigned
     output.loc[nonzero_mask, "severity_method"] = method
-    output.loc[ordered_index[all_labels == -1], "severity_method"] = "adaptive-optics-noise-percentile"
+    output.loc[ordered_index[all_labels == -1], "severity_method"] = (
+        "adaptive-optics-noise-percentile"
+    )
     return output
 
 
@@ -335,6 +343,7 @@ def label_severity(casualties: float) -> str:
     Returns:
         `None` for zero casualties and `Low` for positive casualties. Full
         severity assignment should use `assign_adaptive_severity`.
+
     """
     score = _severity_score(
         pd.DataFrame({"nkill": [casualties], "nwound": [0], "casualties": [casualties]})
@@ -388,7 +397,9 @@ def _cluster_label_map(cluster_order: list[int]) -> dict[int, str]:
     else:
         positions = np.linspace(0, len(cluster_order) - 1, num=4).round().astype(int)
         labels = ["Low"] * len(cluster_order)
-        for position, label in zip(positions, ["Low", "Medium", "High", "Mass Casualty"]):
+        for position, label in zip(
+            positions, ["Low", "Medium", "High", "Mass Casualty"], strict=False
+        ):
             labels[position] = label
         last = "Low"
         for index, label in enumerate(labels):
@@ -396,7 +407,7 @@ def _cluster_label_map(cluster_order: list[int]) -> dict[int, str]:
                 last = label
             else:
                 labels[index] = last
-    return {cluster: label for cluster, label in zip(cluster_order, labels)}
+    return {cluster: label for cluster, label in zip(cluster_order, labels, strict=False)}
 
 
 def _cluster_fit_positions(nonzero: pd.DataFrame, max_cluster_rows: int) -> np.ndarray:
@@ -404,7 +415,9 @@ def _cluster_fit_positions(nonzero: pd.DataFrame, max_cluster_rows: int) -> np.n
     if len(nonzero) <= max_cluster_rows:
         return np.arange(len(nonzero))
     ordered_positions = np.argsort(nonzero["severity_score"].to_numpy(dtype=float))
-    sampled_offsets = np.linspace(0, len(ordered_positions) - 1, num=max_cluster_rows).round().astype(int)
+    sampled_offsets = (
+        np.linspace(0, len(ordered_positions) - 1, num=max_cluster_rows).round().astype(int)
+    )
     return np.unique(ordered_positions[sampled_offsets])
 
 
@@ -420,7 +433,9 @@ def _assign_from_sampled_clusters(
 
     centers = np.vstack([fit_scaled[fit_labels == cluster].mean(axis=0) for cluster in clusters])
     fit_cluster_mask = fit_labels != -1
-    fit_distances = np.sqrt(((fit_scaled[fit_cluster_mask, None, :] - centers[None, :, :]) ** 2).sum(axis=2))
+    fit_distances = np.sqrt(
+        ((fit_scaled[fit_cluster_mask, None, :] - centers[None, :, :]) ** 2).sum(axis=2)
+    )
     fit_nearest_distances = fit_distances.min(axis=1)
     distance_threshold = float(np.quantile(fit_nearest_distances, 0.98))
 
@@ -440,6 +455,7 @@ def data_quality_report(df: pd.DataFrame) -> dict:
 
     Returns:
         Summary metrics and validation checks.
+
     """
     expected_year_min = int(df["iyear"].min()) if len(df) else None
     expected_year_max = int(df["iyear"].max()) if len(df) else None

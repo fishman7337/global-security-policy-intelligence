@@ -1,3 +1,5 @@
+"""Optional deep-learning model and time-series preparation helpers."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -24,9 +26,18 @@ def build_tabular_mlp(input_dim: int, output_classes: int):
 
 
 def window_series(values: np.ndarray, window: int = 12) -> tuple[np.ndarray, np.ndarray]:
+    """Convert a sequence into fixed-width supervised-learning windows.
+
+    Args:
+        values: Ordered sequence values.
+        window: Number of preceding values in each input sample.
+
+    Returns:
+        Input windows and their next-value targets.
+
+    """
     x, y = [], []
     for index in range(window, len(values)):
         x.append(values[index - window : index])
         y.append(values[index])
     return np.asarray(x), np.asarray(y)
-

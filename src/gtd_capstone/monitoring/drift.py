@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
@@ -23,6 +23,7 @@ def population_stability_index(
 
     Returns:
         PSI score. Larger values indicate stronger distribution shift.
+
     """
     base = np.asarray(list(baseline), dtype=float)
     curr = np.asarray(list(current), dtype=float)
@@ -32,7 +33,9 @@ def population_stability_index(
         return 0.0
     quantiles = np.unique(np.quantile(base, np.linspace(0, 1, bins + 1)))
     if len(quantiles) <= 2:
-        quantiles = np.linspace(min(base.min(), curr.min()), max(base.max(), curr.max()) + 1, bins + 1)
+        quantiles = np.linspace(
+            min(base.min(), curr.min()), max(base.max(), curr.max()) + 1, bins + 1
+        )
     base_counts, _ = np.histogram(base, bins=quantiles)
     curr_counts, _ = np.histogram(curr, bins=quantiles)
     base_pct = np.maximum(base_counts / max(base_counts.sum(), 1), 1e-6)
@@ -49,6 +52,7 @@ def categorical_js_divergence(baseline: Iterable[str], current: Iterable[str]) -
 
     Returns:
         Symmetric divergence score between the two empirical distributions.
+
     """
     base_counts = Counter(str(x) for x in baseline)
     curr_counts = Counter(str(x) for x in current)
@@ -83,6 +87,7 @@ def drift_report(
 
     Returns:
         JSON-serializable drift report with per-column scores and severity.
+
     """
     numeric_columns = numeric_columns or ["nkill", "nwound", "casualties"]
     categorical_columns = categorical_columns or [

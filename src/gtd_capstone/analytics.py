@@ -1,3 +1,5 @@
+"""Aggregate analytics and transparent baseline models for GTD incidents."""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -10,6 +12,15 @@ from gtd_capstone.safety import aggregate_only_note
 
 
 def summary(df: pd.DataFrame) -> dict:
+    """Summarize the temporal coverage, geography, and human impact of incidents.
+
+    Args:
+        df: Curated incident records.
+
+    Returns:
+        Aggregate dataset statistics and the analysis safety policy.
+
+    """
     return {
         "rows": int(len(df)),
         "year_min": int(df["iyear"].min()) if len(df) else None,
@@ -23,7 +34,20 @@ def summary(df: pd.DataFrame) -> dict:
     }
 
 
-def trend_points(df: pd.DataFrame, grain: str = "year", group_by: str | None = "region_txt") -> list[dict]:
+def trend_points(
+    df: pd.DataFrame, grain: str = "year", group_by: str | None = "region_txt"
+) -> list[dict]:
+    """Aggregate incident and casualty trends by period and optional group.
+
+    Args:
+        df: Curated incident records.
+        grain: Temporal grain, either ``"year"`` or ``"month"``.
+        group_by: Optional dataframe column used to segment the series.
+
+    Returns:
+        Chronologically sorted trend records.
+
+    """
     working = df.copy()
     if grain == "month":
         working["period"] = working["year_month"]
@@ -53,6 +77,16 @@ def trend_points(df: pd.DataFrame, grain: str = "year", group_by: str | None = "
 
 
 def distributions(df: pd.DataFrame, limit: int = 12) -> dict[str, list[dict]]:
+    """Return the most common labels across key incident dimensions.
+
+    Args:
+        df: Curated incident records.
+        limit: Maximum number of labels returned per dimension.
+
+    Returns:
+        Dimension names mapped to descending label counts.
+
+    """
     fields = {
         "regions": "region_txt",
         "countries": "country_txt",
@@ -73,11 +107,22 @@ def distributions(df: pd.DataFrame, limit: int = 12) -> dict[str, list[dict]]:
     return output
 
 
-def hotspots(df: pd.DataFrame, level: str = "country", limit: int = 50, min_events: int = 5) -> list[dict]:
-    if level == "city":
-        group_cols = ["country_txt", "city"]
-    else:
-        group_cols = ["country_txt"]
+def hotspots(
+    df: pd.DataFrame, level: str = "country", limit: int = 50, min_events: int = 5
+) -> list[dict]:
+    """Rank aggregate geographic hotspots without exposing event-level guidance.
+
+    Args:
+        df: Curated incident records.
+        level: Geographic grouping level, ``"country"`` or ``"city"``.
+        limit: Maximum number of hotspots to return.
+        min_events: Minimum incident count required for a group.
+
+    Returns:
+        Hotspot summaries ordered by a transparent severity score.
+
+    """
+    group_cols = ["country_txt", "city"] if level == "city" else ["country_txt"]
 
     geo = df[df["valid_coordinates"]].copy()
     grouped = (
@@ -103,6 +148,16 @@ def hotspots(df: pd.DataFrame, level: str = "country", limit: int = 50, min_even
 
 
 def simple_forecasts(df: pd.DataFrame, horizon: int = 12) -> list[dict]:
+    """Produce transparent seasonal-mean forecasts by region.
+
+    Args:
+        df: Curated incident records.
+        horizon: Number of future months to forecast.
+
+    Returns:
+        Forecast records with approximate 95-percent intervals.
+
+    """
     monthly = (
         df[df["incident_date"].notna()]
         .groupby(["year_month", "region_txt"])
@@ -150,6 +205,7 @@ def simple_forecasts(df: pd.DataFrame, horizon: int = 12) -> list[dict]:
 
 
 def model_catalog() -> list[dict]:
+    """Describe the analytical and machine-learning models in the project."""
     return [
         {
             "name": "casualty-severity-classifier",
@@ -220,6 +276,16 @@ def predict_severity_rule(payload: dict, reference_df: pd.DataFrame | None = Non
 
 
 def clusters(df: pd.DataFrame, limit: int = 8) -> list[dict]:
+    """Build descriptive profiles from common incident feature combinations.
+
+    Args:
+        df: Curated incident records.
+        limit: Maximum number of profiles to return.
+
+    Returns:
+        Ranked cluster-like profiles with aggregate casualty measures.
+
+    """
     profiles = (
         df.groupby(["region_txt", "attacktype1_txt", "weaptype1_txt"])
         .agg(size=("eventid", "count"), fatalities=("nkill", "sum"), wounded=("nwound", "sum"))
@@ -231,6 +297,6 @@ def clusters(df: pd.DataFrame, limit: int = 8) -> list[dict]:
     profiles["dominant_features"] = profiles.apply(
         lambda row: [row["region_txt"], row["attacktype1_txt"], row["weaptype1_txt"]], axis=1
     )
-    return profiles[
-        ["cluster_id", "size", "fatalities", "wounded", "dominant_features"]
-    ].to_dict(orient="records")
+    return profiles[["cluster_id", "size", "fatalities", "wounded", "dominant_features"]].to_dict(
+        orient="records"
+    )
