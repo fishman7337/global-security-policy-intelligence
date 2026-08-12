@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from gtd_capstone.constants import UNSAFE_CHAT_TERMS
 
-
 REFUSAL = (
     "I can help with historical, aggregate, educational analysis of the GTD dataset, "
     "but I cannot provide tactical, targeting, weaponization, evasion, or operational guidance."
@@ -19,6 +18,7 @@ def is_unsafe_request(text: str) -> bool:
 
     Returns:
         True when the prompt asks for disallowed operational guidance.
+
     """
     normalized = " ".join(text.lower().split())
     return any(term in normalized for term in UNSAFE_CHAT_TERMS)
@@ -29,6 +29,7 @@ def aggregate_only_note() -> str:
 
     Returns:
         Human-readable project safety statement.
+
     """
     return (
         "All geospatial and model outputs are intended for aggregate historical analysis. "

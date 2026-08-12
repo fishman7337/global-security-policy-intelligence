@@ -4,31 +4,41 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   backend:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     env:
       WANDB_MODE: offline
       GTD_SAMPLE_ROWS: 5000
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
       - name: Install
         run: |
           python -m pip install --upgrade pip
           pip install -e .[dev]
+      - name: Check formatting
+        run: python -m ruff format --check src tests scripts/build_notebooks.py
       - name: Lint
         run: python -m ruff check src tests scripts/build_notebooks.py
       - name: Test
         run: pytest
 
   frontend:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           cache: npm
@@ -36,6 +46,27 @@ jobs:
       - name: Install
         working-directory: frontend
         run: npm ci
+      - name: Audit production dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=moderate
       - name: Build
         working-directory: frontend
         run: npm run build
+
+  security:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install security tooling
+        run: |
+          python -m pip install --upgrade pip "setuptools>=83"
+          python -m pip install -e .[dev]
+      - name: Static security analysis
+        run: python -m bandit -q -r src scripts
+      - name: Audit production dependencies
+        run: python -m pip_audit -r requirements.txt --progress-spinner off

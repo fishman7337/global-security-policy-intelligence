@@ -1,3 +1,5 @@
+"""Local TF-IDF retrieval with policy-aware response generation."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,6 +13,8 @@ from gtd_capstone.safety import REFUSAL, is_unsafe_request
 
 @dataclass
 class DocumentChunk:
+    """A titled, attributable document fragment in the local corpus."""
+
     id: str
     title: str
     text: str
@@ -18,6 +22,15 @@ class DocumentChunk:
 
 
 def default_corpus(root: Path | None = None) -> list[DocumentChunk]:
+    """Build the baseline corpus and include available project documentation.
+
+    Args:
+        root: Project root, or ``None`` to use the current directory.
+
+    Returns:
+        Built-in safety and methodology chunks plus local Markdown content.
+
+    """
     root = root or Path.cwd()
     docs: list[DocumentChunk] = [
         DocumentChunk(
@@ -72,12 +85,30 @@ def default_corpus(root: Path | None = None) -> list[DocumentChunk]:
 
 
 class LocalRetriever:
+    """TF-IDF retriever that returns attributable, safety-filtered answers."""
+
     def __init__(self, corpus: list[DocumentChunk] | None = None) -> None:
+        """Fit the vectorizer over a supplied or default document corpus.
+
+        Args:
+            corpus: Document chunks to index, or ``None`` for the default corpus.
+
+        """
         self.corpus = corpus or default_corpus()
         self.vectorizer = TfidfVectorizer(stop_words="english")
         self.matrix = self.vectorizer.fit_transform([chunk.text for chunk in self.corpus])
 
     def search(self, query: str, k: int = 4) -> list[dict]:
+        """Rank document chunks by cosine similarity to a query.
+
+        Args:
+            query: Natural-language retrieval query.
+            k: Maximum number of chunks to return.
+
+        Returns:
+            Ranked, scored, and attributable search results.
+
+        """
         query_vec = self.vectorizer.transform([query])
         scores = cosine_similarity(query_vec, self.matrix).ravel()
         order = scores.argsort()[::-1][:k]
@@ -93,6 +124,15 @@ class LocalRetriever:
         ]
 
     def answer(self, question: str) -> dict:
+        """Answer a safe question or refuse a disallowed request.
+
+        Args:
+            question: Natural-language user question.
+
+        Returns:
+            Answer text, source citations, and a safety status.
+
+        """
         if is_unsafe_request(question):
             return {
                 "answer": REFUSAL,

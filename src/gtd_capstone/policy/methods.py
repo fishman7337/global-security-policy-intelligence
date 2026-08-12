@@ -7,7 +7,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-
 POLICY_OUTCOMES = [
     "log_casualties",
     "log_attacks",
@@ -24,6 +23,7 @@ def run_policy_models(panel: pd.DataFrame) -> dict[str, Any]:
 
     Returns:
         JSON-serializable model result bundle.
+
     """
     models = [
         _fit_fixed_effects(panel, outcome=outcome, predictor="governance_capacity_lag1")
@@ -122,6 +122,7 @@ def build_event_study(
 
     Returns:
         JSON-serializable event-study payload.
+
     """
     if event_column not in panel.columns:
         return {
@@ -154,7 +155,11 @@ def build_event_study(
     study = study[study["relative_year"].between(-window, window)]
     points = (
         study.groupby("relative_year")
-        .agg(mean_outcome=(outcome, "mean"), observations=(outcome, "size"), countries=("iso3", "nunique"))
+        .agg(
+            mean_outcome=(outcome, "mean"),
+            observations=(outcome, "size"),
+            countries=("iso3", "nunique"),
+        )
         .reset_index()
         .sort_values("relative_year")
     )

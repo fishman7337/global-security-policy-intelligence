@@ -1,9 +1,23 @@
+"""Optional PySpark transforms for larger-than-memory GTD workloads."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
 
 def spark_session(app_name: str = "gtd-extreme-pipeline"):
+    """Create a tuned local Spark session.
+
+    Args:
+        app_name: Descriptive Spark application name.
+
+    Returns:
+        Configured ``SparkSession`` instance.
+
+    Raises:
+        RuntimeError: If the optional PySpark dependency is unavailable.
+
+    """
     try:
         from pyspark.sql import SparkSession
     except Exception as exc:  # pragma: no cover - optional dependency path
@@ -22,7 +36,8 @@ def spark_session(app_name: str = "gtd-extreme-pipeline"):
 
 def clean_with_spark(input_parquet: Path, output_parquet: Path) -> dict:
     """Spark-native silver transform for larger-than-memory GTD-style extracts."""
-    from pyspark.sql import Window, functions as F
+    from pyspark.sql import Window
+    from pyspark.sql import functions as F
 
     spark = spark_session()
     df = spark.read.parquet(str(input_parquet))
@@ -32,8 +47,12 @@ def clean_with_spark(input_parquet: Path, output_parquet: Path) -> dict:
         .withColumn("iyear", F.col("iyear").cast("int"))
         .withColumn("imonth", F.coalesce(F.col("imonth").cast("int"), F.lit(0)))
         .withColumn("iday", F.coalesce(F.col("iday").cast("int"), F.lit(0)))
-        .withColumn("nkill", F.greatest(F.coalesce(F.col("nkill").cast("double"), F.lit(0.0)), F.lit(0.0)))
-        .withColumn("nwound", F.greatest(F.coalesce(F.col("nwound").cast("double"), F.lit(0.0)), F.lit(0.0)))
+        .withColumn(
+            "nkill", F.greatest(F.coalesce(F.col("nkill").cast("double"), F.lit(0.0)), F.lit(0.0))
+        )
+        .withColumn(
+            "nwound", F.greatest(F.coalesce(F.col("nwound").cast("double"), F.lit(0.0)), F.lit(0.0))
+        )
         .withColumn("casualties", F.col("nkill") + F.col("nwound"))
         .withColumn(
             "severity_score",
@@ -66,7 +85,10 @@ def clean_with_spark(input_parquet: Path, output_parquet: Path) -> dict:
             "valid_coordinates",
             F.col("latitude").between(-90, 90) & F.col("longitude").between(-180, 180),
         )
-        .withColumn("year_month", F.format_string("%04d-%02d", F.col("iyear"), F.greatest(F.col("imonth"), F.lit(1))))
+        .withColumn(
+            "year_month",
+            F.format_string("%04d-%02d", F.col("iyear"), F.greatest(F.col("imonth"), F.lit(1))),
+        )
     )
     cleaned.write.mode("overwrite").parquet(str(output_parquet))
     rows = cleaned.count()
@@ -75,6 +97,16 @@ def clean_with_spark(input_parquet: Path, output_parquet: Path) -> dict:
 
 
 def spark_sql_gold_views(silver_parquet: Path, output_dir: Path) -> dict:
+    """Materialize Spark SQL trend and hotspot gold views.
+
+    Args:
+        silver_parquet: Curated incident Parquet input.
+        output_dir: Directory that receives analytical Parquet outputs.
+
+    Returns:
+        Names and paths of the materialized views.
+
+    """
     spark = spark_session("gtd-gold-views")
     df = spark.read.parquet(str(silver_parquet))
     df.createOrReplaceTempView("incidents")
@@ -101,4 +133,7 @@ def spark_sql_gold_views(silver_parquet: Path, output_dir: Path) -> dict:
     trend.write.mode("overwrite").parquet(str(output_dir / "spark_trend_region_year"))
     hotspots.write.mode("overwrite").parquet(str(output_dir / "spark_hotspots_country"))
     spark.stop()
-    return {"trend": str(output_dir / "spark_trend_region_year"), "hotspots": str(output_dir / "spark_hotspots_country")}
+    return {
+        "trend": str(output_dir / "spark_trend_region_year"),
+        "hotspots": str(output_dir / "spark_hotspots_country"),
+    }

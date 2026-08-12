@@ -1,11 +1,20 @@
+"""Deterministic micro-batches and a safe Spark streaming query template."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pandas as pd
 
-
-STREAM_COLUMNS = ["eventid", "iyear", "region_txt", "country_txt", "attacktype1_txt", "nkill", "nwound"]
+STREAM_COLUMNS = [
+    "eventid",
+    "iyear",
+    "region_txt",
+    "country_txt",
+    "attacktype1_txt",
+    "nkill",
+    "nwound",
+]
 
 
 def create_micro_batches(input_parquet: Path, output_dir: Path, batch_size: int = 1000) -> dict:

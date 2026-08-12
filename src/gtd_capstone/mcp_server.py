@@ -1,3 +1,5 @@
+"""Read-only JSON-RPC server exposing safe GTD MCP tools and resources."""
+
 from __future__ import annotations
 
 import json
@@ -14,10 +16,20 @@ class ReadOnlyMCPServer:
     """Small JSON-RPC MCP-compatible server for local read-only GTD tools."""
 
     def __init__(self) -> None:
+        """Initialize the incident repository and local document retriever."""
         self.repo = DataRepository()
         self.retriever = LocalRetriever()
 
     def handle(self, message: dict[str, Any]) -> dict[str, Any] | None:
+        """Dispatch one JSON-RPC request.
+
+        Args:
+            message: Parsed JSON-RPC request object.
+
+        Returns:
+            A JSON-RPC response, or ``None`` for notifications.
+
+        """
         method = message.get("method")
         request_id = message.get("id")
         try:
@@ -50,6 +62,7 @@ class ReadOnlyMCPServer:
             }
 
     def tools(self) -> list[dict]:
+        """Return MCP tool definitions exposed by the server."""
         return [
             {
                 "name": "get_schema",
@@ -75,7 +88,11 @@ class ReadOnlyMCPServer:
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "level": {"type": "string", "enum": ["country", "city"], "default": "country"}
+                        "level": {
+                            "type": "string",
+                            "enum": ["country", "city"],
+                            "default": "country",
+                        }
                     },
                 },
             },
@@ -110,6 +127,7 @@ class ReadOnlyMCPServer:
         ]
 
     def resources(self) -> list[dict]:
+        """Return MCP resource definitions exposed by the server."""
         return [
             {
                 "uri": "gtd://docs/ethics",
@@ -126,6 +144,18 @@ class ReadOnlyMCPServer:
         ]
 
     def read_resource(self, uri: str) -> dict:
+        """Read a known aggregate-analysis documentation resource.
+
+        Args:
+            uri: Registered MCP resource URI.
+
+        Returns:
+            MCP resource contents.
+
+        Raises:
+            ValueError: If ``uri`` is not registered.
+
+        """
         if uri == "gtd://docs/ethics":
             text = "Historical aggregate analysis only; no tactical, targeting, or operational guidance."
         elif uri == "gtd://docs/complexity":
@@ -135,6 +165,19 @@ class ReadOnlyMCPServer:
         return {"contents": [{"uri": uri, "mimeType": "text/markdown", "text": text}]}
 
     def call_tool(self, name: str, arguments: dict[str, Any]) -> dict:
+        """Execute a registered read-only MCP tool.
+
+        Args:
+            name: Registered MCP tool name.
+            arguments: Validated tool arguments.
+
+        Returns:
+            MCP text content containing the tool result.
+
+        Raises:
+            ValueError: If ``name`` is not registered.
+
+        """
         df = self.repo.load_incidents()
         if name == "get_schema":
             return self.tool_text({"columns": list(df.columns), "aggregate_only": True})
@@ -159,14 +202,17 @@ class ReadOnlyMCPServer:
 
     @staticmethod
     def tool_json(payload: Any) -> dict:
+        """Serialize a payload as MCP JSON text content."""
         return {"content": [{"type": "text", "text": json.dumps(payload, indent=2, default=str)}]}
 
     @staticmethod
     def tool_text(payload: Any) -> dict:
+        """Serialize a payload as MCP text content."""
         return {"content": [{"type": "text", "text": json.dumps(payload, indent=2, default=str)}]}
 
 
 def main() -> None:
+    """Serve newline-delimited JSON-RPC messages over standard I/O."""
     server = ReadOnlyMCPServer()
     for line in sys.stdin:
         if not line.strip():
@@ -179,4 +225,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

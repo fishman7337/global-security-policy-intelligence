@@ -4,7 +4,6 @@ import ast
 import json
 from pathlib import Path
 
-
 DOCUMENTED_MODULES = [
     Path("src/gtd_capstone/data/cleaning.py"),
     Path("src/gtd_capstone/data/repository.py"),
@@ -24,9 +23,11 @@ def test_research_modules_have_docstrings():
         if ast.get_docstring(tree) is None:
             missing.append(f"{path}: module")
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                if ast.get_docstring(node) is None:
-                    missing.append(f"{path}:{node.lineno} {node.name}")
+            if (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+                and ast.get_docstring(node) is None
+            ):
+                missing.append(f"{path}:{node.lineno} {node.name}")
 
     assert missing == []
 

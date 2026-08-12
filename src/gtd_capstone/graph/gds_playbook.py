@@ -1,7 +1,8 @@
+"""Neo4j Graph Data Science query catalog and playbook writer."""
+
 from __future__ import annotations
 
 from pathlib import Path
-
 
 GDS_QUERIES = {
     "projection": """
@@ -59,6 +60,15 @@ LIMIT 25;
 
 
 def write_gds_playbook(path: Path = Path("artifacts/gold/graph/neo4j_gds_playbook.cypher")) -> Path:
+    """Write the complete Graph Data Science playbook.
+
+    Args:
+        path: Destination Cypher file.
+
+    Returns:
+        Path to the written playbook.
+
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     text = "\n\n".join(f"// {name}\n{query.strip()}" for name, query in GDS_QUERIES.items())
     path.write_text(text + "\n", encoding="utf-8")
@@ -66,5 +76,5 @@ def write_gds_playbook(path: Path = Path("artifacts/gold/graph/neo4j_gds_playboo
 
 
 def gds_query_catalog() -> list[dict]:
+    """Return named Graph Data Science queries for API presentation."""
     return [{"name": name, "cypher": query.strip()} for name, query in GDS_QUERIES.items()]
-

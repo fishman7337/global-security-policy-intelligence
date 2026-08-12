@@ -1,3 +1,5 @@
+"""Build reproducible bronze, silver, and gold analytical artifacts."""
+
 from __future__ import annotations
 
 import argparse
@@ -24,6 +26,7 @@ from gtd_capstone.rag.evaluate import evaluate_rag
 
 
 def pyspark_available() -> bool:
+    """Return whether the optional PySpark runtime can be imported."""
     try:
         import pyspark  # noqa: F401
 
@@ -37,6 +40,17 @@ def build_artifacts(
     sample_rows: int | None = None,
     fetch_policy_sources: bool = False,
 ) -> dict:
+    """Run the local end-to-end artifact pipeline.
+
+    Args:
+        settings: Runtime settings, or ``None`` to resolve environment defaults.
+        sample_rows: Optional row cap for smoke-test builds.
+        fetch_policy_sources: Whether to fetch credential-free policy covariates.
+
+    Returns:
+        Row count, artifact paths, and validation outcomes.
+
+    """
     settings = settings or get_settings()
     ensure_artifact_dirs(settings)
     sources = discover_excel_sources(settings.dataset_dir)
@@ -98,6 +112,7 @@ def build_artifacts(
 
 
 def main() -> None:
+    """Parse pipeline options, build artifacts, and print their manifest."""
     parser = argparse.ArgumentParser(description="Build GTD bronze/silver/gold artifacts.")
     parser.add_argument(
         "--sample-rows",

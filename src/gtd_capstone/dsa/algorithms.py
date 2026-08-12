@@ -1,11 +1,13 @@
+"""Reference data structures, graph algorithms, and complexity benchmarks."""
+
 from __future__ import annotations
 
 import heapq
 import math
 import time
 from collections import Counter, defaultdict, deque
+from collections.abc import Hashable, Iterable
 from dataclasses import dataclass
-from typing import Hashable, Iterable
 
 import pandas as pd
 
@@ -17,6 +19,15 @@ def top_k_counter(values: Iterable[Hashable], k: int) -> list[tuple[Hashable, in
 
 
 def build_adjacency(edges: Iterable[tuple[Hashable, Hashable]]) -> dict[Hashable, set[Hashable]]:
+    """Build an undirected adjacency list from node pairs.
+
+    Args:
+        edges: Iterable of undirected node pairs.
+
+    Returns:
+        Nodes mapped to their neighboring node set.
+
+    """
     adjacency: dict[Hashable, set[Hashable]] = defaultdict(set)
     for left, right in edges:
         adjacency[left].add(right)
@@ -69,20 +80,33 @@ def dijkstra(
 
 @dataclass
 class UnionFind:
+    """Disjoint-set forest with path compression and union by rank."""
+
     parent: dict[Hashable, Hashable]
     rank: dict[Hashable, int]
 
     @classmethod
-    def create(cls, values: Iterable[Hashable]) -> "UnionFind":
+    def create(cls, values: Iterable[Hashable]) -> UnionFind:
+        """Create singleton sets for the supplied values.
+
+        Args:
+            values: Hashable values to initialize.
+
+        Returns:
+            Initialized disjoint-set forest.
+
+        """
         unique = set(values)
         return cls(parent={value: value for value in unique}, rank={value: 0 for value in unique})
 
     def find(self, value: Hashable) -> Hashable:
+        """Find and path-compress the representative for ``value``."""
         if self.parent[value] != value:
             self.parent[value] = self.find(self.parent[value])
         return self.parent[value]
 
     def union(self, left: Hashable, right: Hashable) -> None:
+        """Merge the sets containing ``left`` and ``right``."""
         root_left = self.find(left)
         root_right = self.find(right)
         if root_left == root_right:
@@ -97,6 +121,7 @@ class UnionFind:
 
 
 def complexity_catalog() -> list[dict]:
+    """Describe the complexity of core algorithms and capstone uses."""
     return [
         {
             "topic": "Spark bronze/silver ETL",
@@ -150,6 +175,15 @@ def complexity_catalog() -> list[dict]:
 
 
 def benchmark_dataframe(df: pd.DataFrame) -> dict:
+    """Measure representative top-k and grouping operations.
+
+    Args:
+        df: Curated incident dataframe.
+
+    Returns:
+        Local elapsed times, input size, and benchmark outputs.
+
+    """
     started = time.perf_counter()
     top_regions = top_k_counter(df["region_txt"], 5)
     topk_seconds = time.perf_counter() - started
@@ -166,4 +200,3 @@ def benchmark_dataframe(df: pd.DataFrame) -> dict:
         "grouped_rows": int(len(grouped)),
         "notes": "Benchmarks are local smoke measurements; Spark comparisons are generated when PySpark is installed.",
     }
-

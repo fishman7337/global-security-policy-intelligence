@@ -1,3 +1,5 @@
+"""Command-line suite for classification, regression, and clustering experiments."""
+
 from __future__ import annotations
 
 import argparse
@@ -26,13 +28,13 @@ from gtd_capstone.data.repository import DataRepository
 from gtd_capstone.features.store import materialize_feature_set
 from gtd_capstone.ml.wandb_utils import log_file_artifact, wandb_run
 
-
 NUMERIC = ["iyear", "imonth", "suicide", "property", "ishostkid"]
 CATEGORICAL = ["region_txt", "country_txt", "attacktype1_txt", "targtype1_txt", "weaptype1_txt"]
 FEATURES = [*NUMERIC, *CATEGORICAL]
 
 
 def preprocess() -> ColumnTransformer:
+    """Build the shared numeric and categorical preprocessing pipeline."""
     return ColumnTransformer(
         [
             ("num", StandardScaler(), NUMERIC),
@@ -42,10 +44,21 @@ def preprocess() -> ColumnTransformer:
 
 
 def classifier(family: str):
+    """Build a supported classification estimator.
+
+    Args:
+        family: Model family name; unknown values use random forest.
+
+    Returns:
+        A configured scikit-learn classifier.
+
+    """
     if family == "logistic_regression":
         return LogisticRegression(max_iter=500, n_jobs=-1, class_weight="balanced")
     if family == "extra_trees":
-        return ExtraTreesClassifier(n_estimators=200, random_state=42, n_jobs=-1, class_weight="balanced")
+        return ExtraTreesClassifier(
+            n_estimators=200, random_state=42, n_jobs=-1, class_weight="balanced"
+        )
     return RandomForestClassifier(
         n_estimators=200,
         max_depth=14,
@@ -57,6 +70,17 @@ def classifier(family: str):
 
 
 def run_classification(task: str, sample_rows: int | None, family: str) -> dict:
+    """Train, evaluate, track, and persist a classification model.
+
+    Args:
+        task: Classification target name.
+        sample_rows: Optional maximum number of incident rows.
+        family: Classifier family to train.
+
+    Returns:
+        Task metadata, evaluation metrics, and model artifact path.
+
+    """
     settings = get_settings()
     ensure_artifact_dirs(settings)
     df = DataRepository(settings).load_incidents(sample_rows=sample_rows)
@@ -87,6 +111,16 @@ def run_classification(task: str, sample_rows: int | None, family: str) -> dict:
 
 
 def run_regression(target: str, sample_rows: int | None) -> dict:
+    """Train and evaluate a random-forest casualty regressor.
+
+    Args:
+        target: Numeric dataframe column to predict.
+        sample_rows: Optional maximum number of incident rows.
+
+    Returns:
+        Task metadata and regression metrics.
+
+    """
     settings = get_settings()
     df = DataRepository(settings).load_incidents(sample_rows=sample_rows)
     x = df[FEATURES]
@@ -95,10 +129,15 @@ def run_regression(target: str, sample_rows: int | None) -> dict:
     model = Pipeline(
         [
             ("preprocess", preprocess()),
-            ("model", RandomForestRegressor(n_estimators=160, max_depth=14, random_state=42, n_jobs=-1)),
+            (
+                "model",
+                RandomForestRegressor(n_estimators=160, max_depth=14, random_state=42, n_jobs=-1),
+            ),
         ]
     )
-    with wandb_run(settings.wandb_project, {"task": target, "kind": "regression"}, "train-regression") as run:
+    with wandb_run(
+        settings.wandb_project, {"task": target, "kind": "regression"}, "train-regression"
+    ) as run:
         model.fit(x_train, y_train)
         pred = model.predict(x_test)
         metrics = {
@@ -111,20 +150,37 @@ def run_regression(target: str, sample_rows: int | None) -> dict:
 
 
 def run_clustering(sample_rows: int | None, clusters: int = 8) -> dict:
+    """Fit mini-batch k-means and report an optional silhouette score.
+
+    Args:
+        sample_rows: Optional maximum number of incident rows.
+        clusters: Number of clusters to fit.
+
+    Returns:
+        Clustering task metadata and quality score.
+
+    """
     settings = get_settings()
     df = DataRepository(settings).load_incidents(sample_rows=sample_rows)
     x = preprocess().fit_transform(df[FEATURES])
     model = MiniBatchKMeans(n_clusters=clusters, random_state=42, batch_size=2048, n_init="auto")
     labels = model.fit_predict(x)
     score = silhouette_score(x, labels) if len(set(labels)) > 1 and x.shape[0] <= 20000 else None
-    with wandb_run(settings.wandb_project, {"task": "incident-clustering", "clusters": clusters}, "cluster") as run:
+    with wandb_run(
+        settings.wandb_project, {"task": "incident-clustering", "clusters": clusters}, "cluster"
+    ) as run:
         run.log({"clusters": clusters, "silhouette": score or 0.0})
     return {"task": "incident-clustering", "clusters": clusters, "silhouette": score}
 
 
 def main() -> None:
+    """Parse experiment options and print the selected task result."""
     parser = argparse.ArgumentParser(description="Run extreme GTD experiment suite.")
-    parser.add_argument("--task", choices=["severity", "success", "nkill", "nwound", "clustering"], default="severity")
+    parser.add_argument(
+        "--task",
+        choices=["severity", "success", "nkill", "nwound", "clustering"],
+        default="severity",
+    )
     parser.add_argument("--model-family", default="random_forest")
     parser.add_argument("--sample-rows", type=int, default=10000)
     args = parser.parse_args()

@@ -1,3 +1,5 @@
+"""Train and persist the baseline casualty-severity classifier."""
+
 from __future__ import annotations
 
 import argparse
@@ -15,7 +17,6 @@ from gtd_capstone.config import ensure_artifact_dirs, get_settings
 from gtd_capstone.data.repository import DataRepository
 from gtd_capstone.ml.wandb_utils import log_file_artifact, wandb_run
 
-
 FEATURES = [
     "iyear",
     "imonth",
@@ -31,6 +32,15 @@ FEATURES = [
 
 
 def train_severity_classifier(sample_rows: int | None = None) -> dict:
+    """Train, evaluate, track, and persist a severity classifier.
+
+    Args:
+        sample_rows: Optional maximum number of curated incident rows.
+
+    Returns:
+        Evaluation metrics and paths to the model and metrics artifacts.
+
+    """
     settings = get_settings()
     ensure_artifact_dirs(settings)
     df = DataRepository(settings).load_incidents(sample_rows=sample_rows)
@@ -102,13 +112,16 @@ def train_severity_classifier(sample_rows: int | None = None) -> dict:
         model_path = model_dir / "severity_classifier.joblib"
         metrics_path = model_dir / "severity_metrics.json"
         joblib.dump(model, model_path)
-        metrics_path.write_text(json.dumps({"metrics": metrics, "report": report}, indent=2), "utf-8")
+        metrics_path.write_text(
+            json.dumps({"metrics": metrics, "report": report}, indent=2), "utf-8"
+        )
         log_file_artifact(run, model_path, "severity-classifier", "model")
         log_file_artifact(run, metrics_path, "severity-classifier-metrics", "metrics")
     return {"metrics": metrics, "model_path": str(model_path), "metrics_path": str(metrics_path)}
 
 
 def main() -> None:
+    """Parse training options and print the classifier result."""
     parser = argparse.ArgumentParser(description="Train GTD severity classifier with W&B tracking.")
     parser.add_argument("--sample-rows", type=int, default=None)
     args = parser.parse_args()
